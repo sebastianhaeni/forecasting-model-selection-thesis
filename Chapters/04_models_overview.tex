@@ -1,0 +1,63 @@
+\section{Model Overview}
+
+In this work we will evaluate a series of forecasting models against timeseries data. This section gives an overview of the models we used. The goal was to have baseline models, classical forecasting models, regression-based models, neighbor based and tree based models.
+
+
+\subsection{Baseline Models}
+
+The following models are simple, yet hard to beat baselines.
+
+\textbf{Na\"ive:} We can further segregate this method into three modes. The \emph{last} mode, that is known as the original Na\"ive, takes the last value in the timeseries and predicts this value as the new value for however many forecasting steps we request. This mode is robust against missing data. The \emph{mean} mode takes the mean of a given window length at the end of the timeseries and predicts this value. This mode is also robust against missing data. The \emph{drift} mode takes the difference between the first and last value in the selected window and extrapolates this linearly to the forecasting horizon.
+
+\textbf{Seasonal Na\"ive:} This method works similarly to Na\"ive but instead of going back one step, it goes back the seasonal period. E.g., with seasonal period equal to 7 it does the following: In \emph{last} mode, it predicts the value \(n-7\) as the new value. In \emph{mean} mode, it predicts the mean of the last values in that period as large as the window is. In \emph{drift} mode, it extrapolates the drift in the values of that seasonal periods linearly. This method achieves a surprisingly hard to beat baseline score in a wide range of timeseries.
+
+\textbf{Polynomial Trend with linear regression:} This method tries to fit a polynomial curve of a given degree to the data using the least squares regression. The higher the degree parameter, the better the curve can fit the data, but the more likely it will overfit.
+
+
+\subsection{Classic Models}
+
+\textbf{ARIMA:} (Auto Regressive Integrated Moving Average) \cite{ARIMA} ARIMA models aim to describe the autocorrelations in the data. ARIMA has three main parameters: $p$ the number of lag observations included in the model, $d$ the number of times that the raw observations are differenced and $q$ the size of the moving average window. Selecting appropriate ARIMA parameters can be difficult even for experienced humans. There are methods to automate the parameter selection such as AutoARIMA \cite{fpp3}. However, as we will show later, this method is quite slow.
+
+\textbf{Exponential Smoothing:} These methods first proposed by \cite{HOLT} model a timeseries by saying the more recent the observation the higher the associated weight. This framework generates reliable forecasts quickly and for a wide range of time series, which is a great advantage and of major importance to applications in industry. Simple Exponential Smoothing (SES) is disregarding trend and seasonality. We need to specify the initial level and $\alpha$ as hyper-parameters. However, there are methods to estimate those two parameters automatically. Trend and seasonal exponential smoothing can be achieved by splitting the equation into a level and trend or seasonality that can either be added or multiplied with each other. The full combination that also includes errors is an ETS model (Error, Trend, Seasonal). ETS can further expanded into additive, multiplicative, and damped trend, seasonality, and error which gives 9 combinations. Estimating the parameters is again difficult but automatic procedures such as AutoETS exist. Although As with AutoARIMA, these auto procedures are quite slow.
+
+\textbf{TBATS and BATS:} \textbf{T}rigonometric seasonality, \textbf{B}ox-Cox transformation, \textbf{A}RMA errors, \textbf{T}rend and \textbf{S}easonal components \cite{TBATS}. TBATS has its roots in AutoETS but extends it further. Under the hood TBATS will consider various alternatives and fit a lot of models just like AutoETS. It additionally considers Box-Cox transformations and various amounts of harmonics used to model seasonal effects. BATS is a variant that models seasonalities with integers only. TBATS can be a model that achieves state of the art accuracy if tuned correctly.
+
+\textbf{Prophet:} The authors of Prophet \cite{prophet} compare their methods with TBATS and state that TBATS performs badly if the parameters are left at their defaults. They search for a flexible model that has no parameters, or at least none that need to be tweaked heavily to achieve desirable results. The Prophet forecasting model is based on additive or multiplicative combination of the data's components. See equation \ref{eq:fullTrendModel}. This equation has the benefit of being computationally and cognitively simple. Also new components such as holiday effects and special events can be added. Trend is modeled as growth with \(C\) as the carrying capacity, \(k\) as the growth rate, and \(m\) as an offset parameter
+
+\begin{equation}
+    g(t)=\dfrac{C}{1+exp(-k(t-m))}
+    \label{eq:simpleTrendModel}
+\end{equation}
+
+The growth rate $k$ can be replaced with a vector $a$ that contains the manually specified change points with the respective growth rate of that time interval.
+
+The innovation that we regard as most important making Prophet a highly applicable linear model, is to allow changepoints to be in the data. The changepoints can be generated automatically, or a user can set them specifically. They model at what points the trend will change. If we introduce too many changepoints, we are not going to fit a trend correctly that lasts longer than the time frame between two change points. If we had too few, the model might result in a high error term because it does not have enough flexibility. Reducing the amount of changepoints is a regularization method.
+
+The changepoints can be found automatically by putting initial changepoints uniformly onto the time series data. Once we have the initial change points, we put a sparse prior on these change points and compute each point's magnitude. The prior variable is a hyper-parameter that also act as regularization. Once we have the magnitudes computed we can discard change points with a low value and keep the remaining ones.
+
+\textbf{Theta:} \cite{THETA} This method follows the concept of modifying the local curvature of the time-series through a coefficient $\theta$, that is applied directly to the second differences of the data. These become Theta-lines. Depending on the $\theta$ chosen the line approximate the long- or short-term behavior. The proposed method decomposes the original time series into two or more different Theta-lines. These are extrapolated separately, and the subsequent forecasts are combined. This method was used at the M3 competition and performed well. It was subsequently used as baseline in the M4 competition and outperformed several participants.
+
+\subsection{Linear Regression}
+
+We apply linear regression to create forecasts by first conditionally deseasonalizing and detrending them depending on the presence of seasonality and trend. We use seasonal decomposition with moving averages to remove the seasonal component. To remove the trend, we use a polynomial trend forecaster with various degrees. For the final regression we use several methods: Linear, Elastic Net (combined L1 and L2 priors as regularizer), Ridge (least squares with l2 regularization), Lasso (L1 prior as regularizer), LARS (Least Angle Regression), Lasso-Lars (Lasso model fit with Least Angle Regression), Baysian Ridge, Huber (robust to outliers), Passive Aggressive and Orthogonal Matching Pursuit (constraints on the number of non-zero coefficients). We have parameters to separate multiplicative and additive seasonality, degrees for the detrender, as well as specific parameters for each of the regression models.
+
+\subsection{Neighbor-Based Regression Models}
+
+Using neighbors to do regression is a bit exotic, but we included it to increase variety.
+We use k-neighbors to do regression. The conditional deseasonalizer and detrender are prepended in the pipeline. Then the target is predicted by local interpolation of the targets associated of the nearest neighbors in the training set.
+
+\subsection{Tree-Based Regression Models}
+
+The simplest tree-based regression model is the decision tree. Decision trees are known to overfit the data by creating an overly complex tree that does not generalize well. There are regularization parameters such as max depth and max features. The splits are leaves can be controlled via the impurity and samples parameters. A random forest uses several decision trees on sub-samples of the timeseries and combines them by averaging to improve accuracy and avoid overfitting. Extra Trees (\textbf{Extr}emely \textbf{R}andomized Trees) unlike Random Forests do not use the most discriminative thresholds but draw them at random. Often this makes the variance lower but the bias slightly higher.
+
+\subsection{Boosted Models}
+
+A boosting method combines weak learners into a single strong learner in an iterative fashion. Trees are added one at a time to the ensemble and fit to correct the prediction errors made by prior models. AdaBoost performs this adaptively by changing the weights. In Gradient Boosting models are fit using a differentiable loss function and gradient descent algorithm. Those models are sometimes called Gradient Boosting Machines (GBM). Extreme Gradient Boosting (XGBoost) and LightGBM are an efficient implementation of a GBM.
+
+\subsection{Other Models}
+
+In our research we focus on models that could potentially compete in a realtime forecasting architecture, meaning that they should be relatively fast. There are methods that do not fulfill this requirement, as they are good at creating fixed size forecasts in big batch sizes. Multi-Layer Perceptrons (MLP) have not performed well at the M4 competition \cite{M4}, thus we did not include it. Convolutional Neural Networks (CNN) and Long Short Term Memory (LSTM), as well as other Deep Learning methods, have been applied to forecasting problems in the past, but we believe that our aforementioned methods should be able to cover our use cases. Future research can proof those methods can outperform the above models outside of niche scenarios, but as of yet it has not \cite{M4} \cite{M5}.
+
+\subsection{Summary}
+
+In summary, this is the list of models we evaluated: Na\"ive, sNa\"ive, Poly Trend, ARIMA, AutoARIMA, Exponential Smoothing, ETS, Theta, TBATS, BATS, Prophet, Linear Regression, Elastic Net Regression, Ridge Regression, Lasso Regression, Lars Regression, Lasso Lars Regression, Bayesian Ridge Regression, Huber Regression, Passive Aggressive Regression, Orthogonal Matching Pursuit Regression, K-Neighbors Regression, Decision Tree Regression, Random Forest Regression, Extra Trees Regression, Gradient Boosting Regression, Ada Boost Regression, XGBoost, LightGBM.

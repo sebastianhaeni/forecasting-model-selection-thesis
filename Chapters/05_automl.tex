@@ -1,0 +1,65 @@
+\section{AutoML for Timeseries}
+
+AutoML is not a clearly defined term and merely means that some parts of machine learning are automated. The goal usually is that one provides raw data and the AutoML system figures out how to pre-process the data (transformations, outlier cleaning, impute data, feature extraction), fits a suitable model to it and evaluates its performance using cross-validation. The output is a deployable model that can be used to give predictions on unseen data.
+
+\subsection{Model Selection}
+
+One of the AutoML tasks is to select an optimal model. In timeseries forecasting we can implement such AutoML capabilities by evaluating a series of models against the timeseries data and select the best model based on some accuracy metric.
+
+This approach is compute intensive as we have dozens of models, and each has hundreds or thousands of hyper-parameter combinations. To find the best model we have to fit all and choose the one that achieved the lowest error.
+
+We can optimize this by fitting the least number of possible models of each type by limiting the size of the parameter grid. Once we have the best model type, we can fine tune it with a (Bayesian) optimization engine that searches the best hyper-parameters given some parameter distributions similarly to PyCaret \cite{PyCaret}.
+
+\subsection{Temporal Test-Train Splits}
+
+Timeseries forecasters cannot be evaluated using traditional test-train splits and cross-validation.
+
+Timeseries data points are inherently dependent on previous points. The method traditionally used is to define a cut-off point and split the data temporally. The first part \(y_{train}\) is used to fit the model and the second part \(y_{test}\) is used to be compared to the forecast \(y_{pred}\) and compute the error term. However, this gives us only one evaluation data point. To achieve a sort of cross-validation, we can repeat this with several cut-off points. To achieve the best result, we can create forecasts at every point minus the forecast horizon \(H\) and the minimal length of meaningful timeseries data \(T_{min}\). 
+
+Using this many cut-offs to validate a model can be costly as we must re-fit the model every time. Sean J. Taylor and Benjamin Letham proposed Simulated Historical Forecasts (SHFs) \cite{prophet} by reducing the number of cut-offs used. The generally used number of cut-off points is to create a forecast every \(H/2\) periods. This still allows the model error term to be measured and averaged which can then be compared to other models as long as a normalized metric is used.
+
+
+\subsection{Evaluation of point forecast accuracy}
+
+Because we are forecasting points and not creating class predictions, we should measure the quality of a fit by the error term \(e_{t}\) representing the difference between the observed value and its forecast. The two most used formulas are:
+
+\begin{itemize}
+    \item Mean Absolute Error: MAE = \(mean(|e_t|)\)
+    \item Root Mean Squared Error: RMSE: \(\sqrt{mean(e_t^2)}\)
+\end{itemize}
+
+Both are scale-dependent, meaning they are only useful when comparing models on a single timeseries, or timeseries of exactly equal scale. Mean Absolute Percentage Error helps to remove this restriction.
+
+\begin{equation}
+    MAPE = mean(|100e_t/y_t|)
+\end{equation}
+
+MAPE is not defined when \(y_t\) is zero and has extreme values when close to zero. Symmetric MAPE (sMAPE) has been proposed by Armstrong (1978) \cite{armstrong1985crystal} to circumvent such problems. sMAPE was used at the M3 competition. However, it still suffers from zero divisions and can be negative, which does not make it actually absolute. Hyndman \& Koehler (2006) \cite{HYNDMAN2006679} proposed to use Mean Absolute Scaled Error (MASE) which was then used at the M4 competition \cite{M4}. The scale must be determined using \(y_{train}\) and taking the one-step seasonal na\"ive value for the point under evaluation. It does not specify how the seasonal period \(m\) must be determined. For non-periodical data we specify \(m=1\).
+
+\begin{equation}
+    q_j=\frac{e_j}{\frac{1}{T-m}\sum\limits_{t=m+1}^T|y_{t}-y_{t-m}|}
+    \label{eq:mase_q}
+\end{equation}
+
+\begin{equation}
+    MASE=mean(|q_{j}|)
+    \label{eq:mase}
+\end{equation}
+
+
+The M5 competition used Root Mean Squared Scaled Error (RMSSE). While optimizing for MASE benefits forecasters that predict values closer to zero, optimizing for RMSSE benefits predictions close to the mean. 
+
+\begin{equation}
+    RMSSE=\sqrt{mean(q_j^2)}
+    \label{eq:rmsse}
+\end{equation}
+
+For these reasons, RMSSE is the measure we will use from now on.
+
+
+\subsection{Discussion}
+
+This approach of brute force model search is not feasible if we deal if a large amount of timeseries that we need to find the best model for. As an example, let's say we have 20 model types \(m\), each having an over of 100 hyper-parameter combinations \(p_{mean}\). Then we assume an average time \(t_{mean}\) of one second to fit a model to a timeseries and produce a forecast (\(20*100*1\)). Running that would take roughly 30 minutes if not parallelized. If we only evaluate one model type at first (\(20*1\)) we improve the first part, but we might not choose the model that has the absolute lowest error in the end. After picking, we must tune the model parameters, which means that we have to try again several combinations and evaluate them against each other which maybe takes another 100 seconds if not parallelized. So, even with this optimized approach we would be billed two minutes of computing time. Therefore, we need to find the best model without running those models and seeing how they score.
+
+We will present two approaches in the following sections \ref{sec:autoModelSelection} \emph{Auto Model Selection} and \ref{sec:guidedModelSelection} \emph{Guided Model Selection}.
+

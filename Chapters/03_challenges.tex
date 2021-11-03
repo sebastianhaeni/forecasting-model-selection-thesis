@@ -1,0 +1,11 @@
+\section{Challenges}
+
+We will tackle the challenges in model selection for forecasting under these requirements.
+
+\begin{itemize}
+    \item \textbf{Scale:} We want to guide model selection at scale. This means we want to support large to very large datasets with thousands of timeseries. The selected models also need to scale; thus we need to be able to figure out the model to select within a short time frame. There is no time to evaluate a series of models and select the best one, not to speak of tuning it. We could do this all in parallel on a hyper-scaler infrastructure, and make it work. But then there is a large cost to pay for the resources utilized. So, we also want to keep the cost down as far as possible when scaling up.
+    \item \textbf{Accuracy that is good enough:} In our scenario, we do not want to get the highest accuracy or lowest error by all cost. The solution should be pragmatic and deliver acceptable accuracy. Making tradeoffs between accuracy and compute cost should be a user driven decision by giving preferences that are influencing the selection process.
+    \item \textbf{Human in the loop:} We want a system that keeps the human in the loop but can function without a human. Models should be selected automatically, but if a human detects a problem with the forecasting that is down to the model selected, this should be overridable. We also want humans to be able to understand why a model was selected, and if other options were available at the time.
+    \item \textbf{Automatic Ingestion \& Pre-Processing:} The data potentially needs to be pre-processed by transforming it from whatever the input is, to a readable timeseries format. The data might also contain outliers, and depending on the users preferences, these should be automatically removed by a simple method.
+    \item \textbf{Anomaly Detection:} There might be a lot of anomalies detected in a timeseries. A user should be able to tweak the sensitivity to get less or more anomalies.
+\end{itemize}

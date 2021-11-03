@@ -1,0 +1,94 @@
+\documentclass[smallabstract,smallcaptions]{dccpaper}
+
+\usepackage{epsfig}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{color}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{listings}
+\usepackage[utf8]{inputenc}
+
+\pagenumbering{arabic}
+
+\graphicspath{.}
+
+
+\newlength{\figurewidth}
+\newlength{\smallfigurewidth}
+
+\setlength{\smallfigurewidth}{2.75in}
+\setlength{\figurewidth}{6in}
+
+\begin{document}
+
+\title
+{\large
+\textbf{Guided Model Selection for Forecasting and \\ Anomaly Detection}
+}
+
+
+\author{%
+Sebastian Häni\\[0.5em]
+{\small\begin{minipage}{\linewidth}\begin{center}
+\begin{tabular}{ccc}
+Zurich University of Applied Sciences (ZHAW)\\
+Zurich, Switzerland\\
+\url{haeniseb@students.zhaw.ch}
+\end{tabular}
+\end{center}\end{minipage}}
+}
+
+\maketitle
+\thispagestyle{empty}
+
+
+
+\begin{figure}[h]
+\centerline{\includegraphics[scale=.5]{/Users/sebastian/IdeaProjects/thesis/paper/Figures/thesis-front.png}}
+\end{figure}
+
+
+\vspace{5em}
+
+\begin{abstract}
+Timeseries forecasting and anomaly detection can be done with various models. Challenges arise when the amount of timeseries to be analyzed overcomes the availability of analysts working on them. An automated system needs to be put in place to handle the ever-increasing load of today's data streams. But which models should be chosen for the dataset and task at hand? We can use one model to rule them all and deal with its downsides, or we can select the model automatically by letting yet another model decide what will perform best as shown in this work. We will explore the available models, what learning tasks commonly come to light and how a system can be designed to let inexperienced users consume these forecasting capabilities with a guided model selection while keeping the human in the loop.
+\end{abstract}
+
+\newpage
+\tableofcontents
+\newpage
+
+\input{Chapters/01_intro}
+\input{Chapters/02_related_work}
+\input{Chapters/03_challenges}
+\input{Chapters/04_models_overview}
+\input{Chapters/05_automl}
+\input{Chapters/06_auto_model_selection}
+\input{Chapters/07_guided_model_selection}
+\input{Chapters/08_in_practice}
+\input{Chapters/09_architecture}
+\input{Chapters/10_user_interaction}
+\input{Chapters/11_evaluation}
+
+\newpage
+\section{Conclusion}
+In this work we had to goal to provide an approach to guide model selection for forecasting and anomaly detection in a scalable manner. We additionally showcased how a system like this can be built in practice.
+
+Firstly, we explored if we could classify timeseries data to predict which model will work best solely on the previous evaluation against a series of models. We concluded that this Auto Selection approach does not work if the dataset and the learning task are too similar. The evaluated classifiers were not able to learn the classes even with a very reduced number of classes. We tried classical feature extraction and Random Forests, ROCKET, MrSEQL and others to classify the timeseries without success. We discovered however that there are some timeseries which can be separated in such a space.
+
+Thus, we followed suit with our second approach that we called Guided Model Selection. We defined groups for timeseries to fall into based on simple and few criteria. We then evaluated again a series of models against those groups and recorded the scores and timings in summaries. We then took unseen data, sorted it to fall into the groups and created forecasts with the best model according to our previous evaluation. We found that our approach can produce decent forecasts in the M5 competition. We reason that this is because the dataset used to evaluate had similar data to the M5 dataset. Our second verification using the Web Traffic dataset failed as we did not have enough data to evaluate our models against. Thus, we had to fallback to default models, which create a worse score than a baseline method. 
+
+This guided approach is helpful for users who want to learn what models they could try to create forecasts. It gives them insights how models performed on similar data since they were evaluated on the same group. Users can inspect accuracy, CPU time and explainability and adjust weights to create their personalized ranking of models.
+
+Our implementation and its architecture also showcase that building such a system in a highly scalable fashion can be done. We show that with modern technologies and by leveraging hyper-scalers we can build it on a pay-as-you-go model, meaning if there are no users, there are no bills. By putting a price tag on the CPU time in our system while the user is selecting a model, might lead them to tradeoff between accuracy and cost. Our scoring formula gives them the freedom to do so.
+
+
+
+\newpage
+\section{References}
+\bibliographystyle{IEEEbib}
+\bibliography{refs}
+
+
+\end{document}
